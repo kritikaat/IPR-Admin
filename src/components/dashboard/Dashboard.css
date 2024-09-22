@@ -1,0 +1,67 @@
+/* Overall dashboard layout */
+.dashboard-container {
+    display: flex;
+    height: 100vh;
+    background-color: rgba(244, 244, 244, 0.882);
+  }
+  
+  /* Side panel */
+  .side-panel {
+    width: 250px;
+    background-color: #2e3b4e;
+    padding: 20px;
+    color: white;
+  }
+  
+  .side-panel h2 {
+    margin-bottom: 20px;
+    font-size: 20px;
+  }
+  
+  .side-panel ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .side-panel ul li {
+    padding: 10px 0;
+    color: white;
+    cursor: pointer;
+  }
+  
+  .side-panel ul li:hover {
+    background-color: #3b4a62;
+    padding-left: 10px;
+  }
+
+/* Main content styles */
+.main-content {
+    flex: 1;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    color: #3b4a62;
+  }
+  
+  
+  /* Form cards grid */
+  .form-cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-gap: 20px;
+  }
+  
+  /* Search bar */
+  .search-bar {
+    margin-bottom: 20px;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  
