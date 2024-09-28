@@ -29,33 +29,30 @@ const Dashboard = ({ forms }) => {
     switch (activeTab) {
       case 'Forms':
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-            {filteredForms.map((form, index) => (
-              <div key={form.id} className="animate-slide-up" style={{animationDelay: `${index * 0.1}s`}}>
-                <FormCard form={form} />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredForms.map((form) => (
+              <FormCard key={form.id} form={form} />
             ))}
           </div>
         );
       case 'Analytics':
-        return <h2 className="text-2xl font-bold animate-fade-in">Analytics Coming Soon</h2>;
+        return <h2 className="text-2xl font-bold text-gray-800">Analytics Coming Soon</h2>;
       default:
         return null;
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 transition-all duration-300">
-    
-
-      <div className="flex flex-1 overflow-hidden">
-        <nav className="w-64 bg-blue-800 text-white p-6 transition-all duration-300">
+    <div className="flex h-screen bg-gray-100">
+      <nav className="w-64 bg-white border-r border-gray-200">
+        <div className="p-6">
+          <h1 className="text-2xl font-bold text-gray-800 mb-6">Form Manager</h1>
           <ul className="space-y-2">
             {tabs.map((tab) => (
               <li 
                 key={tab} 
-                className={`py-2 px-4 rounded-lg cursor-pointer transition-all duration-300 ${
-                  activeTab === tab ? 'bg-blue-600 shadow-lg' : 'hover:bg-blue-700'
+                className={`py-2 px-4 rounded-md cursor-pointer transition-colors duration-200 ${
+                  activeTab === tab ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 onClick={() => setActiveTab(tab)}
               >
@@ -63,39 +60,31 @@ const Dashboard = ({ forms }) => {
               </li>
             ))}
           </ul>
-        </nav>
+        </div>
+      </nav>
 
-        <main className="flex-1 p-8 overflow-auto transition-all duration-300">
-          <div className="mb-8 max-w-2xl mx-auto animate-fade-in">
-            <SearchBar onSearch={handleSearch} className="w-full transition-all duration-300 focus:ring-2 focus:ring-blue-500" />
+      <main className="flex-1 overflow-auto">
+        <div className="p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold text-gray-800">{activeTab}</h2>
+            <button className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200">
+              Admin Profile
+            </button>
+          </div>
+
+          <div className="mb-6">
+            <SearchBar onSearch={handleSearch} className="w-full max-w-md" />
           </div>
 
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
             </div>
           ) : (
             renderContent()
           )}
-        </main>
-      </div>
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.5s ease-out;
-        }
-        .animate-slide-up {
-          animation: slideUp 0.5s ease-out forwards;
-        }
-      `}</style>
+        </div>
+      </main>
     </div>
   );
 };
