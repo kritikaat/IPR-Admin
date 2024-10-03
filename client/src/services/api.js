@@ -14,6 +14,18 @@ const forms = [
       responses: 120,
       edited: 5, // days ago
     },
+    {
+      id: 3,
+      title: "Exhibition Form",
+      responses: 80,
+      edited: 3, // days ago
+    },
+    {
+      id: 4,
+      title: "Feedback Form",
+      responses: 80,
+      edited: 3, // days ago
+    }
   ];
   
   // Dummy responses for form with id 1 (Customer Feedback Form)

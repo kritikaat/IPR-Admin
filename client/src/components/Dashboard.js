@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import FormCard from './Formcard';
 import SearchBar from './SearchBar';
+import Analytics from './analytics';
 
 const Dashboard = ({ forms }) => {
   const [filteredForms, setFilteredForms] = useState([]);
@@ -36,7 +37,7 @@ const Dashboard = ({ forms }) => {
           </div>
         );
       case 'Analytics':
-        return <h2 className="text-2xl font-bold text-gray-800">Analytics Coming Soon</h2>;
+        return <Analytics/>;
       default:
         return null;
     }

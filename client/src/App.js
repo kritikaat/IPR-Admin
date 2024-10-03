@@ -2,7 +2,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import DashboardPage from './pages/dashboardpage';
-import FormDetailsPage from './components/FormDetailPage';
+import FormDetailsPage from './components/formdetailspage';
 
 
 const App = () => {
