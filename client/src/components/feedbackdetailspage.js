@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Send, Filter, Download, Trash2, Search } from 'lucide-react';
+import { exportToExcel, exportToCSV } from './exportUtils'; 
 
 const FeedbackDetailsPage = () => {
   const navigate = useNavigate();
@@ -59,6 +60,51 @@ const FeedbackDetailsPage = () => {
   const handleDeleteSelectedRatings = () => {
     setRatings(prev => prev.filter(item => !selectedRatings.includes(item.id)));
     setSelectedRatings([]);
+  };
+
+  const handleExportFeedbacks = (format) => {
+    const data = feedbacks.map(f => ({
+      Institution: f.institutionName,
+      Website: f.website,
+      VisitDate: f.visitDate,
+      StaffName: f.staffName,
+      Email: f.staffEmail,
+      Mobile: f.staffMobile,
+      Students: f.totalStudents,
+      AccompanyingStaff: f.accompanyingStaff,
+      Source: f.sources,
+      Campuses: f.campuses,
+      Best: f.best,
+      Worst: f.worst,
+      Suggestions: f.suggestions,
+      Comments: f.comments
+    }));
+
+    if (format === 'excel') {
+      exportToExcel(data, 'feedbacks');
+    } else {
+      exportToCSV(data, 'feedbacks');
+    }
+  };
+
+  const handleExportRatings = (format) => {
+    const data = ratings.map(r => ({
+      IPRRating: r.iprRating,
+      FCIPTRating: r.fciptRating,
+      Knowledge: r.knowledge,
+      IPRExplanations: r.explanationsIPR,
+      FCIPTExplanations: r.explanationsFCIPT,
+      KnowledgeBefore: r.knowledgeBefore,
+      KnowledgeAfter: r.knowledgeAfter,
+      TechnicalContents: r.technicalContents,
+      EaseOfUnderstanding: r.easeOfUnderstanding
+    }));
+
+    if (format === 'excel') {
+      exportToExcel(data, 'ratings');
+    } else {
+      exportToCSV(data, 'ratings');
+    }
   };
 
   if (loading) return (
@@ -163,9 +209,19 @@ const FeedbackDetailsPage = () => {
                   <button className="p-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition duration-300">
                     <Filter size={20} />
                   </button>
-                  <button className="p-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition duration-300">
-                    <Download size={20} />
+                  <button
+                    onClick={() => handleExportFeedbacks('excel')}
+                    className="bg-green-500 text-white p-2 rounded mr-2"
+                  >
+                    Export Feedbacks as Excel
                   </button>
+                  <button
+                    onClick={() => handleExportFeedbacks('csv')}
+                    className="bg-blue-500 text-white p-2 rounded"
+                  >
+                    Export Feedbacks as CSV
+                  </button>
+                 
                   {selectedFeedbacks.length > 0 && (
                     <button
                       onClick={handleDeleteSelectedFeedbacks}
@@ -231,13 +287,13 @@ const FeedbackDetailsPage = () => {
         <div className={`transition-opacity duration-300 ${activeTab === 'ratings' ? 'opacity-100' : 'opacity-0 absolute top-0 left-0 w-full'}`}>
           {activeTab === 'ratings' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center mb-6">
+             <div className="flex justify-between items-center mb-6">
                 <div className="flex space-x-2">
-                <div className="relative w-full">
+                  <div className="relative">
                     <input
                       type="text"
-                      placeholder="Search ratings..."
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 "
+                      placeholder="Search Ratings..."
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -246,12 +302,22 @@ const FeedbackDetailsPage = () => {
                   <button className="p-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition duration-300">
                     <Filter size={20} />
                   </button>
-                  <button className="p-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition duration-300">
-                    <Download size={20} />
+                  <button
+                    onClick={() => handleExportRatings('excel')}
+                    className="bg-green-500 text-white p-2 rounded mr-2"
+                  >
+                    Export Ratings as Excel
                   </button>
-                  {selectedRatings.length > 0 && (
+                  <button
+                    onClick={() => handleExportRatings('csv')}
+                    className="bg-blue-500 text-white p-2 rounded"
+                  >
+                    Export Ratings as CSV
+                  </button>
+                 
+                  {selectedFeedbacks.length > 0 && (
                     <button
-                      onClick={handleDeleteSelectedRatings}
+                      onClick={handleDeleteSelectedFeedbacks}
                       className="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-300"
                     >
                       <Trash2 size={20} />
