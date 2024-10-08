@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Ratings {
+  id                 Int      @id @default(autoincrement())
+  iprRating          Int
+  fciptRating        Int
+  knowledge          Int
+  explanationsIPR    Int
+  explanationsFCIPT  Int
+  knowledgeBefore    Int
+  knowledgeAfter     Int
+  technicalContents  Int
+  easeOfUnderstanding Int
+  feedbackFormId     Int      @unique
+  feedbackForm       feedbackForm @relation(fields: [feedbackFormId], references: [id])
+
+  @@map("ratings")
+}
+
+model feedbackForm {
+  id                 Int      @id @default(autoincrement())
+  institutionName    String
+  website            String
+  visitDate          DateTime
+  staffName          String
+  staffEmail         String
+  staffMobile        String
+  totalStudents      Int
+  accompanyingStaff  Int
+  sources            String[]
+  campuses           String[]
+  ratings            Ratings?
+  best               String?
+  worst              String?
+  suggestions        String?
+  comments           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("feedback_forms")
+}
