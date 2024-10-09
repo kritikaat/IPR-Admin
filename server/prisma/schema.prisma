@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -51,4 +45,59 @@ model feedbackForm {
   updatedAt          DateTime @updatedAt
 
   @@map("feedback_forms")
+}
+
+model Visitor {
+  id              Int      @id @default(autoincrement())
+  institutionName String
+  studentBranch   String
+  studentSem      Int
+  numStudents     Int
+  numFaculty      Int
+  name            String
+  position        String
+  email           String
+  mobile          String
+  campus          String[]
+  ipr_time        String?
+  fcipt_time      String?
+  visit_date      DateTime
+  visit_time      String
+  materials       String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model IPRExhibitionForm {
+    id                     Int      @id @default(autoincrement())
+    hallDimension          String
+    isEnclosedHall         String
+    canBeDarkened          String
+    hasCooling             String?
+    isGroundFloor          String
+    hasStorageSpace        String?
+    powerOutlets           Int
+    numTables              Int?
+    vrSpace                String?
+    hasWifi                String?
+    lectureHallArea        String
+    seatingCapacity        Int
+    hasAVFacilities        String?
+    distanceFromExhibition String?
+    accommodationProvided  String?
+    localTransportation    String?
+    secureParkingSpace     String?
+    manpowerForLoading     String?
+    contactPersonName      String
+    contactPersonMobile    String
+    contactPersonEmail     String
+    venueLocation          String
+    teacherInvitation      Int
+    teacherRegistration    Int
+    providesWritingMaterials String?
+    providesRefreshments   String?
+    quizForSchoolStudents  String?
+    quizTeamSelection      String?
+    quizArrangements       String?
+    quizRefreshments       String?
 }

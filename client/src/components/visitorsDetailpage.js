@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSpring, animated } from 'react-spring';
 import Calendar from './Calendar';
 import PublishModal from './PublishModal';
-import {  Send, Calendar as CalendarIcon, Users, Search, Filter, Download, Trash2 } from 'lucide-react';
+import { Send, Calendar as CalendarIcon, Users, Search, Filter, Download, Trash2, Edit,Info,ChevronDown } from 'lucide-react';
+import { exportToExcel, exportToCSV } from './exportUtils';
+import axios from 'axios';
 
 const VisitorDetailsPage = () => {
   const navigate = useNavigate();
@@ -11,17 +13,15 @@ const VisitorDetailsPage = () => {
   const [selectedDates, setSelectedDates] = useState([]);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [publishedLink, setPublishedLink] = useState('');
-  const [combinedData, setCombinedData] = useState([]);
-  const [fetchError, setFetchError] = useState(null);
   const [activeTab, setActiveTab] = useState('calendar');
   const [searchTerm, setSearchTerm] = useState('');
+  const [visitorData, setVisitorData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [groupIncharge, setGroupIncharge] = useState([]);
-  const [ setVisitorArrivalData] = useState([]);
-  const [filteredVisitorArrivalData, setFilteredVisitorArrivalData] = useState([]);
-  const [selectedVisitorArrival, setSelectedVisitorArrival] = useState([]);
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [exportFormat, setExportFormat] = useState('excel'); 
 
-  // Add the animations back
   const fadeIn = useSpring({
     opacity: 1,
     from: { opacity: 0 },
@@ -32,127 +32,105 @@ const VisitorDetailsPage = () => {
     from: { transform: 'translateY(50px)' },
   });
 
-  const processVisitorArrivalData = (data) => {
-    if (data && Array.isArray(data.visitorArrival)) {
-      return data.visitorArrival
-        .filter(item => 
-          item.campus && item.ipr_time && item.fcipt_time && 
-          item.visit_date && item.visit_time && 
-          item.materials 
-        )
-        .map(item => ({ 
-          
-          ipr_time: item.ipr_time,
-          fcipt_time: item.fcipt_time,
-          visit_date: item.visit_date ? new Date(item.visit_date).toLocaleDateString() : 'N/A',
-          visit_time: item.visit_time,
-          materials: Array.isArray(item.materials) ? item.materials.join(', ') : item.materials,
-          campus: Array.isArray(item.labs) ? item.campus.join(', ') : item.campus
-        }));
-    } else {
-      console.warn('Visitor arrival data is missing or not an array');
-      return [];
+  const prepareDataForExport = useCallback(() => {
+    return visitorData.map(item => ({
+      'Institution Name': item.institutionName,
+      'Branch': item.studentBranch,
+      'Semester': item.studentSem,
+      'Number of Students': item.numStudents,
+      'Number of Faculty': item.numFaculty,
+      'Contact Person': item.name,
+      'Position': item.position,
+      'Email': item.email,
+      'Mobile': item.mobile,
+      'Campus': item.campus.join(', '),
+      'IPR Time': item.ipr_time,
+      'FCIPT Time': item.fcipt_time,
+      'Visit Date': new Date(item.visit_date).toLocaleDateString(),
+      'Visit Time': item.visit_time,
+      'Materials': item.materials.join(', ')
+    }));
+  }, [visitorData]);
+
+  const handleExport = useCallback(() => {
+    const data = prepareDataForExport();
+    const filename = 'visitors_data';
+
+    if (exportFormat === 'excel') {
+      exportToExcel(data, filename);
+    } else if (exportFormat === 'csv') {
+      exportToCSV(data, filename);
     }
-  };
+  }, [exportFormat, prepareDataForExport]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/visitors');
-        if (!response.ok) {
-          throw new Error('Failed to fetch data');
-        }
-        const data = await response.json();
-        
-        // Log the received data for debugging
-        console.log('Received data:', data);
+  const toggleExpandRow = useCallback((id) => {
+    setExpandedRow(expandedRow === id ? null : id);
+  }, [expandedRow]);
 
-        // Check if data exists and has the expected structure
-        if (data) {
-          // Handle visitors and faculties data
-          if (Array.isArray(data.visitors) && Array.isArray(data.faculties)) {
-            const combined = data.visitors.map((visitor, index) => ({
-              ...visitor,
-              num_students: data.faculties[index]?.num_students || 'N/A',
-              num_faculty: data.faculties[index]?.num_faculty || 'N/A'
-            }));
-            setCombinedData(combined);
-          } else {
-            console.warn('Visitors or faculties data is missing or not an array');
-          }
 
-          // Handle group incharge data
-          if (Array.isArray(data.groupincharge)) {
-            setGroupIncharge(data.groupincharge);
-          } else {
-            console.warn('Group incharge data is missing or not an array');
-          }
-
-          // Handle visitor arrival data
-          if (Array.isArray(data.visitorArrival)) {
-            const processedData = processVisitorArrivalData(data);
-            setVisitorArrivalData(processedData);
-            setFilteredVisitorArrivalData(processedData); 
-          } else {
-            console.warn('Visitor arrival data is missing or not an array');
-          }
-        } else {
-          throw new Error('No data received from the server');
-        }
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setFetchError(err.message);
-      }
-    };
-
-    fetchData();
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('http://localhost:3000/visitor');
+      setVisitorData(response.data);
+    } catch (error) {
+      setFetchError(`Error fetching data: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleVisitorArrivalSelection = (id) => {
-    setSelectedVisitorArrival(prev => 
-      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
-    );
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const handleDeleteSelectedVisitorArrival = () => {
-    setVisitorArrivalData(prev => prev.filter(item => !selectedVisitorArrival.includes(item.id)));
-    setSelectedVisitorArrival([]);
-  };
-
-
-  const handleSelectDates = (dates) => {
+  const handleSelectDates = useCallback((dates) => {
     setSelectedDates(dates);
-  };
+  }, []);
 
-  const handlePublish = () => {
+  const handlePublish = useCallback(() => {
     const link = `https://kritikaat.github.io/IPRProject/`;
     setPublishedLink(link);
     setIsPublishModalOpen(true);
-  };
+  }, []);
 
-  const formatDisplayDate = (dateString) => {
+  const formatDisplayDate = useCallback((dateString) => {
     const [year, month, day] = dateString.split('-');
     const date = new Date(year, month - 1, parseInt(day) + 1);
     return date.toLocaleDateString();
-  };
+  }, []);
 
-  const filteredData = combinedData.filter(item =>
-    item.institution_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.student_branch.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.num_students.toString().includes(searchTerm) ||
-    item.num_faculty.toString().includes(searchTerm)
-  );
-
-  const handleItemSelection = (id) => {
+  const handleItemSelection = useCallback((id) => {
     setSelectedItems(prev => 
       prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  const handleDeleteSelected = () => {
-    setCombinedData(prev => prev.filter(item => !selectedItems.includes(item.id)));
+  const handleDeleteSelected = useCallback(() => {
+    setVisitorData(prev => prev.filter(item => !selectedItems.includes(item.id)));
     setSelectedItems([]);
-  };
+  }, [selectedItems]);
+
+
+  const handleDelete = useCallback((id) => {
+    setVisitorData(prev => prev.filter(item => item.id !== id));
+  }, []);
+
+  const filteredData = useMemo(() => {
+    return visitorData.filter(item =>
+      Object.values(item).some(value =>
+        value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    );
+  }, [visitorData, searchTerm]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (fetchError) {
+    return <div>{fetchError}</div>;
+  }
 
   return (
     <animated.div style={fadeIn} className="container mx-auto px-4 py-8">
@@ -160,7 +138,7 @@ const VisitorDetailsPage = () => {
         <div className="mb-8 flex justify-between items-center">
           <button
             onClick={() => navigate('/')}
-           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:-translate-y-1  hover:shadow-lg flex items-center"
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg flex items-center"
           >
             Back to Dashboard
           </button>
@@ -230,9 +208,24 @@ const VisitorDetailsPage = () => {
                 <button className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition duration-300 ease-in-out">
                   <Filter size={20} />
                 </button>
-                <button className="px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition duration-300 ease-in-out">
-                  <Download size={20} />
+                <select
+                      className="appearance-none bg-green-100 text-green-700 font-semibold py-2 px-4 pr-8 rounded-md hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent cursor-pointer transition duration-300 ease-in-out"
+                      value={exportFormat}
+                      onChange={(e) => setExportFormat(e.target.value)}
+                    >
+                      <option value="excel">Excel</option>
+                      <option value="csv">CSV</option>
+               </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-green-700">
+                </div>
+                <button 
+                  className="px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition duration-300 ease-in-out flex items-center"
+                  onClick={handleExport}
+                >
+                  <Download size={20} className="mr-2" />
+                  <span>Export</span>
                 </button>
+                    
                 {selectedItems.length > 0 && (
                   <button
                     className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-300 ease-in-out"
@@ -243,194 +236,84 @@ const VisitorDetailsPage = () => {
                 )}
               </div>
 
-                
-                {fetchError ? (
-                  <div className="text-red-600 bg-red-100 p-4 rounded-md shadow">{fetchError}</div>
-                ) : (
-                  filteredData.length > 0 ? (
-                    <div className="overflow-x-auto bg-white rounded-lg shadow">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              <input
-                                type="checkbox"
-                                className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                checked={selectedItems.length === combinedData.length}
-                                onChange={() => {
-                                  if (selectedItems.length === combinedData.length) {
-                                    setSelectedItems([]);
-                                  } else {
-                                    setSelectedItems(combinedData.map(item => item.id));
-                                  }
-                                }}
-                              />
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Institution Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sem</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Number of Students</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Number of Faculty</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {filteredData.map(item => (
-                            <tr key={item.id}>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <input
-                                  type="checkbox"
-                                  className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                  checked={selectedItems.includes(item.id)}
-                                  onChange={() => handleItemSelection(item.id)}
-                                />
+              {fetchError ? (
+               <div className="text-red-600 bg-red-100 p-4 rounded-md shadow">{fetchError}</div>
+              ) : (
+                filteredData.length > 0 ? (
+                  <div className="overflow-x-auto bg-white rounded-lg shadow">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Institution Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. of Students</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. of Faculty</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Person</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visit Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredData.map(item => (
+                          <React.Fragment key={item.id}>
+                            <tr>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.institutionName}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.studentBranch}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.studentSem}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.numStudents}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.numFaculty}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Date(item.visit_date).toLocaleDateString()}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <button onClick={() => toggleExpandRow(item.id)} className="text-blue-600 hover:text-blue-900 mr-2">
+                                  <Info size={16} />
+                                </button>
+                                <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900">
+                                  <Trash2 size={16} />
+                                </button>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.institution_name}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.student_branch}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.student_sem}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.num_students}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.num_faculty}</td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="text-gray-600 p-4 rounded-md shadow">No data found.</div>
-                  )
-                )}  
-                
-                <div className="mt-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Group Incharge Information</h2>
-                
-                {fetchError ? (
-                  <div className="text-red-600 bg-red-100 p-4 rounded-md shadow">{fetchError}</div>
+                            {expandedRow === item.id && (
+                              <tr>
+                                <td colSpan="8" className="px-6 py-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <h4 className="font-semibold mb-2">Group Incharge Details</h4>
+                                      <p>Name: {item.name}</p>
+                                      <p>Position: {item.position}</p>
+                                      <p>Email: {item.email}</p>
+                                      <p>Mobile: {item.mobile}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold mb-2">Visitor Arrival Details</h4>
+                                      <p>Campus: {item.campus.join(', ')}</p>
+                                      <p>IPR Time: {item.ipr_time}</p>
+                                      <p>FCIPT Time: {item.fcipt_time}</p>
+                                      <p>Visit Date: {new Date(item.visit_date).toLocaleDateString()}</p>
+                                      <p>Visit Time: {item.visit_time}</p>
+                                      <p>Materials: {item.materials.join(', ')}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
-                  groupIncharge.length > 0 ? (
-                    <div className="overflow-x-auto bg-white rounded-lg shadow">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {groupIncharge.map(member => (
-                            <tr key={member.id}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.name}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.position}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.email}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.mobile}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="text-gray-600 p-4 rounded-md shadow">No group incharge data found.</div>
-                  )
-                )}
-
-                <div className="mt-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Visitor Arrival Data</h2>
-
-                <div className="mb-4 flex space-x-2">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="Search visitor arrival data..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                  <div className="text-gray-600 p-4 rounded-md shadow">No visitors found.</div>
+                )
+              )}
             </div>
-            <button className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition duration-300 ease-in-out">
-              <Filter size={20} />
-            </button>
-            <button className="px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition duration-300 ease-in-out">
-              <Download size={20} />
-            </button>
-            {selectedVisitorArrival.length > 0 && (
-              <button
-                className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-300 ease-in-out"
-                onClick={handleDeleteSelectedVisitorArrival}
-              >
-                <Trash2 size={20} />
-              </button>
-            )}
-          </div>
-          
-          {fetchError ? (
-            <div className="text-red-600 bg-red-100 p-4 rounded-md shadow">{fetchError}</div>
-          ) : (
-            filteredVisitorArrivalData.length > 0 ? (
-              <div className="overflow-x-auto bg-white rounded-lg shadow">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        <input
-                          type="checkbox"
-                          className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          checked={selectedVisitorArrival.length === filteredVisitorArrivalData.length}
-                          onChange={() => {
-                            if (selectedVisitorArrival.length === filteredVisitorArrivalData.length) {
-                              setSelectedVisitorArrival([]);
-                            } else {
-                              setSelectedVisitorArrival(filteredVisitorArrivalData.map(item => item.id));
-                            }
-                          }}
-                        />
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campus</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IPR Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FCIPT Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visit Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visit Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Materials</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredVisitorArrivalData.map(item => (
-                      <tr key={item.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <input
-                            type="checkbox"
-                            className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            checked={selectedVisitorArrival.includes(item.id)}
-                            onChange={() => handleVisitorArrivalSelection(item.id)}
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.campus}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.ipr_time}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.fcipt_time}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.visit_date}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.visit_time}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.materials}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-gray-600 p-4 rounded-md shadow">No visitor arrival data found.</div>
-            )
-          )}  
-
-                </div>
-              </div>
-              </div>
-            )}
-        
-         
-            
-          </div>
-        </animated.div>
-
-      <PublishModal isOpen={isPublishModalOpen} setIsOpen={setIsPublishModalOpen} link={publishedLink} />
+          )}
+        </div>
+        {isPublishModalOpen && (
+          <PublishModal link={publishedLink} onClose={() => setIsPublishModalOpen(false)} />
+        )}
+      </animated.div>
     </animated.div>
   );
 };

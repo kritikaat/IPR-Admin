@@ -1,5 +1,5 @@
 import {Router} from "express";
-import {fetchFeedback} from "../controllers/feedbackcontroller.js";
+import {fetchFeedback} from "../controllers/feedbackController.js";
 const router = Router();
 
 router.get('/',fetchFeedback);
